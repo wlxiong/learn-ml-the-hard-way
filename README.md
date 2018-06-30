@@ -5,3 +5,16 @@ Try to implement machine learning models (especially deep learning models) using
 1. [Linear regression](1-linear-regression.ipynb)
 2. [Logistic regression](2-logistic-regression.ipynb)
 3. [Multiclass logistic regression](3-multiclass-logistic-regression.ipynb)
+
+- [Appendix A. Broadcasting and dot product in numpy](appendix-a-broadcasting-and-dot-product.ipynb)
+
+
+## Setup Jupyter Notebook theme
+
+```shell
+# install jupyterthemes
+pip install jupyterthemes
+
+# dark theme
+jt -t onedork -fs 10 -altp -tfs 11 -nfs 115 -cellw 88% -T
+```
