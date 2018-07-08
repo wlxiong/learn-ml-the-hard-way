@@ -5,6 +5,7 @@ Try to implement machine learning models (especially deep learning models) using
 1. [Linear regression](1-linear-regression.ipynb)
 2. [Logistic regression](2-logistic-regression.ipynb)
 3. [Multiclass logistic regression](3-multiclass-logistic-regression.ipynb)
+4. [A simple neural network framework](4-simple-neural-network-framework.ipynb)
 
 - [Appendix A. Broadcasting and dot product in numpy](appendix-a-broadcasting-and-dot-product.ipynb)
 
