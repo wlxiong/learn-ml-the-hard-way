@@ -6,6 +6,9 @@ class Neuron(object):
     def __init__(self):
         pass
 
+    def __str__(self):
+        return "<%s>" % (type(self).__name__,)
+
     def forward(self, z):
         raise NotImplementedError
 
@@ -73,14 +76,15 @@ class ReLU(Neuron):
         super(ReLU, self).__init__()
 
     def forward(self, z):
-        self.z = z
-        zeros = np.zeros(z.shape)
-        stacked = np.stack((z, zeros), axis=-1)
-        val = np.max(stacked, axis=-1)
-        self.val = val
-        return val
+        # zeros = np.zeros(z.shape)
+        # stacked = np.stack((z, zeros), axis=-1)
+        # self.outputs = np.max(stacked, axis=-1)
+        # return self.outputs
+        self.outputs = np.copy(z)
+        self.outputs[self.outputs < 0.0] = 0.0
+        return self.outputs
 
     def backward(self, grad_out):
-        sign = np.sign(self.val)
+        sign = np.sign(self.outputs)
         grad_in = sign * grad_out
         return grad_in

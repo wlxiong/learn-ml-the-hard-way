@@ -52,9 +52,15 @@ class NeuralNetwork(object):
 
 class ComputeLayer(object):
 
-    def __init__(self, num_inputs, num_outputs):
+    def __init__(self, num_inputs, num_outputs, neuron):
         self.num_inputs = num_inputs
         self.num_outputs = num_outputs
+        self.neuron = neuron
+
+    def __str__(self):
+        return "%s(%d, %d, %s)" % (type(self).__name__, self.num_inputs, self.num_outputs, self.neuron)
+
+    __repr__ = __str__
 
     def forward(self, x):
         raise NotImplementedError
@@ -129,10 +135,10 @@ class CrossEntropyLayer(LossLayer):
 
 class FullyConnectedLayer(ComputeLayer):
 
-    def __init__(self, num_inputs, num_outputs, neuron_type=neurons.Identity):
-        super(FullyConnectedLayer, self).__init__(num_inputs, num_outputs)
-        self.W = np.random.randn(num_inputs, num_outputs)
-        self.b = np.random.randn(num_outputs)
+    def __init__(self, num_inputs, num_outputs, scale=1.0, neuron_type=neurons.Identity):
+        super(FullyConnectedLayer, self).__init__(num_inputs, num_outputs, neuron_type)
+        self.W = np.random.randn(num_inputs, num_outputs) * scale
+        self.b = np.random.randn(num_outputs) * scale
         self.neuron = neuron_type()
 
     def parameters(self):
@@ -160,7 +166,7 @@ class FullyConnectedLayer(ComputeLayer):
 class IdentityLayer(ComputeLayer):
 
     def __init__(self, num_inputs, neuron_type=neurons.Identity):
-        super(IdentityLayer, self).__init__(num_inputs, num_inputs)
+        super(IdentityLayer, self).__init__(num_inputs, num_inputs, neuron_type)
         self.neuron = neuron_type()
 
     def forward(self, x):
