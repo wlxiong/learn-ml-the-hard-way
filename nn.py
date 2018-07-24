@@ -14,8 +14,9 @@ class NeuralNetwork(object):
     def evaluate(self, inputs):
         outputs = inputs
         for layer in self.compute_layers:
-            outputs = layer.forward(inputs)
-            inputs = outputs
+            if not layer.skip_eval:
+                outputs = layer.forward(inputs)
+                inputs = outputs
         return outputs
 
     def train(self, learning_rate):
@@ -61,6 +62,10 @@ class ComputeLayer(object):
         return "%s(%d, %d, %s)" % (type(self).__name__, self.num_inputs, self.num_outputs, self.neuron)
 
     __repr__ = __str__
+
+    @property
+    def skip_eval(self):
+        return False
 
     def forward(self, x):
         raise NotImplementedError
@@ -175,6 +180,33 @@ class IdentityLayer(ComputeLayer):
 
     def backward(self, grad_out):
         grad_in = self.neuron.backward(grad_out)
+        return grad_in
+
+    def parameters(self):
+        return []
+
+    def gradient(self):
+        return []
+
+
+class DropoutLayer(ComputeLayer):
+
+    def __init__(self, num_inputs, drop_prob=.5):
+        super(DropoutLayer, self).__init__(num_inputs, num_inputs, None)
+        self.drop_prob = drop_prob
+
+    @property
+    def skip_eval(self):
+        return True
+
+    def forward(self, x):
+        keep_prob = 1.0 - self.drop_prob
+        self.mask = np.random.rand(*x.shape) < keep_prob
+        outputs = x * self.mask / keep_prob
+        return outputs
+
+    def backward(self, grad_out):
+        grad_in = grad_out * self.mask
         return grad_in
 
     def parameters(self):

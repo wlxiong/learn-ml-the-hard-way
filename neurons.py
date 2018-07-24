@@ -67,6 +67,8 @@ class Softmax(Neuron):
         diag_idx = np.arange(diag.shape[1])
         outer_mat[:, diag_idx, diag_idx] += diag
         grad_in = np.einsum("ik,ikj->ij", grad_out, outer_mat)
+        # Directly use matmul() instead of einsum
+        # grad_in = np.squeeze(np.matmul(grad_out[:, np.newaxis, :], outer_mat))
         return grad_in
 
 
@@ -76,12 +78,7 @@ class ReLU(Neuron):
         super(ReLU, self).__init__()
 
     def forward(self, z):
-        # zeros = np.zeros(z.shape)
-        # stacked = np.stack((z, zeros), axis=-1)
-        # self.outputs = np.max(stacked, axis=-1)
-        # return self.outputs
-        self.outputs = np.copy(z)
-        self.outputs[self.outputs < 0.0] = 0.0
+        self.outputs = np.maximum(z, 0)
         return self.outputs
 
     def backward(self, grad_out):
