@@ -19,3 +19,9 @@ pip install jupyterthemes
 # dark theme
 jt -t onedork -fs 10 -altp -tfs 11 -nfs 115 -cellw 88% -T
 ```
+
+## Run unit tests
+
+```shell
+python -m unittest discover . "*_test.py" -v
+```
