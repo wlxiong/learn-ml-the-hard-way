@@ -47,7 +47,7 @@ class Dataset(object):
         raise NotImplementedError
 
     @property
-    def size(self):
+    def sample_size(self):
         raise NotImplementedError
 
     @property
@@ -68,11 +68,11 @@ class MNIST(Dataset):
         with gzip.open(label_file) as fin:
             self.labels = _read_labels(fin)
 
-        self._size, num_rows, num_cols = self.images.shape
-        self._num_inputs = num_rows * num_cols
+        self._num_images, self._num_rows, self._num_cols = self.images.shape
+        self._num_inputs = self._num_rows * self._num_cols
         self._num_outputs = 10
 
-        self._inputs = self.images.reshape(self._size, self._num_inputs) / 255
+        self._inputs = self.images.reshape(self._num_images, self._num_inputs) / 255
         self._outputs = transform_to_one_hot(self.labels, self._num_outputs)
 
     @property
@@ -84,8 +84,8 @@ class MNIST(Dataset):
         return self._outputs
 
     @property
-    def size(self):
-        return self._size
+    def sample_size(self):
+        return self._num_images
 
     @property
     def num_inputs(self):
@@ -94,6 +94,18 @@ class MNIST(Dataset):
     @property
     def num_outputs(self):
         return self._num_outputs
+
+    @property
+    def image_size(self):
+        return (self._num_rows, self._num_cols)
+
+    @property
+    def image_width(self):
+        return self._num_rows
+
+    @property
+    def image_height(self):
+        return self._num_cols
 
     def show_image(self, image_index, title=''):
         title = "label %d - %s" % (self.labels[image_index], title)
