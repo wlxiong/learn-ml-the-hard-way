@@ -43,7 +43,7 @@ class Dataset(object):
         raise NotImplementedError
 
     @property
-    def outputs(self):
+    def targets(self):
         raise NotImplementedError
 
     @property
@@ -51,11 +51,11 @@ class Dataset(object):
         raise NotImplementedError
 
     @property
-    def num_inputs(self):
+    def input_dim(self):
         raise NotImplementedError
 
     @property
-    def num_outputs(self):
+    def target_dim(self):
         raise NotImplementedError
 
 
@@ -68,44 +68,44 @@ class MNIST(Dataset):
         with gzip.open(label_file) as fin:
             self.labels = _read_labels(fin)
 
-        self._num_images, self._num_rows, self._num_cols = self.images.shape
-        self._num_inputs = self._num_rows * self._num_cols
-        self._num_outputs = 10
+        self._num_images, self._image_width, self._image_height = self.images.shape
+        self._input_dim = (self._image_width, self._image_height, 1)
+        self._target_dim = 10
 
-        self._inputs = self.images.reshape(self._num_images, self._num_inputs) / 255
-        self._outputs = transform_to_one_hot(self.labels, self._num_outputs)
+        self._inputs = self.images.reshape((-1, *self.input_dim)) / 255.0
+        self._targets = transform_to_one_hot(self.labels, self._target_dim)
 
     @property
     def inputs(self):
         return self._inputs
 
     @property
-    def outputs(self):
-        return self._outputs
+    def targets(self):
+        return self._targets
 
     @property
     def sample_size(self):
         return self._num_images
 
     @property
-    def num_inputs(self):
-        return self._num_inputs
+    def input_dim(self):
+        return self._input_dim
 
     @property
-    def num_outputs(self):
-        return self._num_outputs
+    def target_dim(self):
+        return self._target_dim
 
     @property
     def image_size(self):
-        return (self._num_rows, self._num_cols)
+        return (self._image_width, self._image_height)
 
     @property
     def image_width(self):
-        return self._num_rows
+        return self._image_width
 
     @property
     def image_height(self):
-        return self._num_cols
+        return self._image_height
 
     def show_image(self, image_index, title=''):
         title = "label %d - %s" % (self.labels[image_index], title)
@@ -114,4 +114,3 @@ class MNIST(Dataset):
         plt.figure()
         plt.title(title)
         return plt.imshow(image_rgb,)
-
