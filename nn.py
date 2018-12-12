@@ -143,9 +143,18 @@ class ComputeLayer(object):
 class DataLayer(object):
 
     def __init__(self, inputs, targets):
-        self.inputs = inputs
-        self.targets = targets
-        self._output_dim = self.inputs[0].shape
+        self._inputs = inputs
+        self._targets = targets
+        # the outputs of data layer are the "inputs" of the model
+        self._output_dim = inputs[0].shape
+
+    @property
+    def inputs(self):
+        return self._inputs
+
+    @property
+    def targets(self):
+        return self._targets
 
     @property
     def output_dim(self):
@@ -161,17 +170,19 @@ class DataLayer(object):
 class BatchDataLayer(DataLayer):
 
     def __init__(self, inputs, targets, batch_size, shuffle=False):
-        super(BatchDataLayer, self).__init__(inputs, targets)
-        self.batch_size = batch_size
-        self.dataset = list(zip(inputs, targets))
         if shuffle:
-            random.shuffle(self.dataset)
+            assert len(inputs) == len(targets)
+            indices = np.random.permutation(len(inputs))
+            inputs = inputs[indices]
+            targets = targets[indices]
+        self.batch_size = batch_size
+        super(BatchDataLayer, self).__init__(inputs, targets)
 
     def forward(self):
-        for i in range(0, len(self.dataset), self.batch_size):
-            batch = self.dataset[i:i+self.batch_size]
-            inputs, targets = zip(*batch)
-            yield np.array(inputs), np.array(targets)
+        for i in range(0, len(self.inputs), self.batch_size):
+            input_batch = self.inputs[i:i+self.batch_size]
+            target_batch = self.targets[i:i+self.batch_size]
+            yield input_batch, target_batch
 
     def backward(self, grad_out):
         pass
