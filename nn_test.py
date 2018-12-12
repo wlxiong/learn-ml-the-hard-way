@@ -10,8 +10,8 @@ class TestFullyConnectedLayer(unittest.TestCase):
 
     def setUp(self):
         np.random.seed(0)
-        self.train_data = dataset.MNIST('data/3/train-images-idx3-ubyte.gz', 'data/3/train-labels-idx1-ubyte.gz')
-        self.test_data = dataset.MNIST('data/3/t10k-images-idx3-ubyte.gz', 'data/3/t10k-labels-idx1-ubyte.gz')
+        self.train_data = dataset.MNIST('data/mnist/train-images-idx3-ubyte.gz', 'data/mnist/train-labels-idx1-ubyte.gz')
+        self.test_data = dataset.MNIST('data/mnist/t10k-images-idx3-ubyte.gz', 'data/mnist/t10k-labels-idx1-ubyte.gz')
 
     def test_forward_pass(self):
         data_layer = nn.BatchDataLayer(self.train_data.inputs, self.train_data.targets, batch_size=64, shuffle=False)
@@ -25,8 +25,8 @@ class TestFullyConnectedLayer(unittest.TestCase):
 class TestConvolutionalLayer(unittest.TestCase):
 
     def setUp(self):
-        self.train_data = dataset.MNIST('data/3/train-images-idx3-ubyte.gz', 'data/3/train-labels-idx1-ubyte.gz')
-        self.test_data = dataset.MNIST('data/3/t10k-images-idx3-ubyte.gz', 'data/3/t10k-labels-idx1-ubyte.gz')
+        self.train_data = dataset.MNIST('data/mnist/train-images-idx3-ubyte.gz', 'data/mnist/train-labels-idx1-ubyte.gz')
+        self.test_data = dataset.MNIST('data/mnist/t10k-images-idx3-ubyte.gz', 'data/mnist/t10k-labels-idx1-ubyte.gz')
 
     def test_preserve_image_size(self):
         filter_size = (3, 3)
@@ -103,8 +103,8 @@ class TestConvolutionalLayer(unittest.TestCase):
 class TestPoolingLayer(unittest.TestCase):
 
     def setUp(self):
-        self.train_data = dataset.MNIST('data/3/train-images-idx3-ubyte.gz', 'data/3/train-labels-idx1-ubyte.gz')
-        self.test_data = dataset.MNIST('data/3/t10k-images-idx3-ubyte.gz', 'data/3/t10k-labels-idx1-ubyte.gz')
+        self.train_data = dataset.MNIST('data/mnist/train-images-idx3-ubyte.gz', 'data/mnist/train-labels-idx1-ubyte.gz')
+        self.test_data = dataset.MNIST('data/mnist/t10k-images-idx3-ubyte.gz', 'data/mnist/t10k-labels-idx1-ubyte.gz')
 
     def test_identity_layer_as_special_case(self):
         filter_size = (1, 1)
