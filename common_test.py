@@ -1,7 +1,8 @@
 import unittest
-import numpy as np
 
 import common
+from narray import lib as np
+
 
 class TestIm2row(unittest.TestCase):
 

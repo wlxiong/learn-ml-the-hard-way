@@ -1,9 +1,10 @@
 import gzip
 import array
 import struct
-import numpy as np
 import matplotlib.pyplot as plt
-from common import transform_to_one_hot
+
+import common
+import numpy as np
 
 
 def _read_int32(fin):
@@ -73,7 +74,7 @@ class MNIST(Dataset):
         self._target_dim = 10
 
         self._inputs = self.images.reshape((-1, *self.input_dim)) / 255.0
-        self._targets = transform_to_one_hot(self.labels, self._target_dim)
+        self._targets = common.transform_to_one_hot(self.labels, self._target_dim)
 
     @property
     def inputs(self):

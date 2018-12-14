@@ -1,9 +1,9 @@
 import unittest
-import numpy as np
 
 import nn
 import neurons
 import dataset
+from narray import lib as np
 
 
 class TestFullyConnectedLayer(unittest.TestCase):

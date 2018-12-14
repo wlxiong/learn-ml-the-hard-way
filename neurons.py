@@ -1,4 +1,4 @@
-import numpy as np
+from narray import lib as xp
 
 
 class Neuron(object):
@@ -35,10 +35,10 @@ class Softmax(Neuron):
 
     def forward(self, z):
         self.z = z
-        z_min = np.min(z, axis=1)
-        z = z - z_min[:, np.newaxis]
-        exp = np.exp(z)
-        sum_exp = np.sum(exp, axis=1)[:, np.newaxis]
+        z_min = xp.min(z, axis=1)
+        z = z - z_min[:, xp.newaxis]
+        exp = xp.exp(z)
+        sum_exp = xp.sum(exp, axis=1)[:, xp.newaxis]
         outputs = exp / sum_exp
         return outputs
 
@@ -57,18 +57,18 @@ class Softmax(Neuron):
         # = exp(z_i) * -1 * sum(exp(z))^-2 * exp(z_j)
         # = - exp(z_i) * exp(z_j) / sum(exp(z))^2
 
-        z_min = np.min(self.z, axis=1)
-        z = self.z - z_min[:, np.newaxis]
-        exp = np.exp(z)
-        sum_exp = np.sum(exp, axis=1)
-        outer_mat = - np.einsum("ij,ik->ijk", exp, exp)
-        outer_mat /= sum_exp[:, np.newaxis, np.newaxis]**2
-        diag = exp / sum_exp[:, np.newaxis]
-        diag_idx = np.arange(diag.shape[1])
+        z_min = xp.min(self.z, axis=1)
+        z = self.z - z_min[:, xp.newaxis]
+        exp = xp.exp(z)
+        sum_exp = xp.sum(exp, axis=1)
+        outer_mat = - xp.einsum("ij,ik->ijk", exp, exp)
+        outer_mat /= sum_exp[:, xp.newaxis, xp.newaxis]**2
+        diag = exp / sum_exp[:, xp.newaxis]
+        diag_idx = xp.arange(diag.shape[1])
         outer_mat[:, diag_idx, diag_idx] += diag
-        grad_in = np.einsum("ik,ikj->ij", grad_out, outer_mat)
+        grad_in = xp.einsum("ik,ikj->ij", grad_out, outer_mat)
         # Directly use matmul() instead of einsum
-        # grad_in = np.squeeze(np.matmul(grad_out[:, np.newaxis, :], outer_mat))
+        # grad_in = xp.squeeze(xp.matmul(grad_out[:, xp.newaxis, :], outer_mat))
         return grad_in
 
 
@@ -78,10 +78,10 @@ class ReLU(Neuron):
         super(ReLU, self).__init__()
 
     def forward(self, z):
-        self.outputs = np.maximum(z, 0)
+        self.outputs = xp.maximum(z, 0)
         return self.outputs
 
     def backward(self, grad_out):
-        sign = np.sign(self.outputs)
+        sign = xp.sign(self.outputs)
         grad_in = sign * grad_out
         return grad_in

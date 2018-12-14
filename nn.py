@@ -1,7 +1,8 @@
-import numpy as np
-import random
 import common
 import neurons
+
+import numpy as np
+from narray import lib as xp
 
 
 class NeuralNetwork(object):
@@ -182,7 +183,7 @@ class BatchDataLayer(DataLayer):
         for i in range(0, len(self.inputs), self.batch_size):
             input_batch = self.inputs[i:i+self.batch_size]
             target_batch = self.targets[i:i+self.batch_size]
-            yield input_batch, target_batch
+            yield xp.asarray(input_batch), xp.asarray(target_batch)
 
     def backward(self, grad_out):
         pass
@@ -207,7 +208,7 @@ class CrossEntropyLayer(LossLayer):
 
     def forward(self, yhat, y):
         self.yhat, self.y = yhat, y
-        loss = - np.sum(y * np.log(yhat + 1e-6))
+        loss = - xp.sum(y * xp.log(yhat + 1e-6))
         return loss
 
     def backward(self):
@@ -257,7 +258,7 @@ class DropoutLayer(ComputeLayer):
 
     def forward(self, x):
         keep_prob = 1.0 - self.drop_prob
-        self.mask = np.random.rand(*x.shape) < keep_prob
+        self.mask = xp.random.rand(*x.shape) < keep_prob
         outputs = x * self.mask / keep_prob
         return outputs
 
@@ -283,8 +284,8 @@ class FullyConnectedLayer(ComputeLayer):
 
     def init_parameters(self, input_dim):
         num_inputs = np.prod(input_dim)
-        self.W = np.random.randn(num_inputs, self.num_neurons) * self.scale
-        self.b = np.random.randn(self.num_neurons) * self.scale
+        self.W = xp.random.randn(num_inputs, self.num_neurons) * self.scale
+        self.b = xp.random.randn(self.num_neurons) * self.scale
         return (self.num_neurons,)
 
     def parameters(self):
@@ -296,24 +297,24 @@ class FullyConnectedLayer(ComputeLayer):
     def forward(self, x):
         num_samples = x.shape[0]
         self.x = x.reshape((num_samples, -1))
-        self.z = np.dot(self.x, self.W) + self.b
+        self.z = xp.dot(self.x, self.W) + self.b
         return self.z
 
     def backward(self, grad_out):
         num_samples = grad_out.shape[0]
         grad_out = grad_out.reshape((num_samples, -1))
         # This is basically a cross join between the last axes of x and z.
-        # grad_W_i = np.einsum("ij,ik->ijk", self.x, grad_z)
+        # grad_W_i = xp.einsum("ij,ik->ijk", self.x, grad_z)
         # grad_b_i = grad_z
-        # self.grad_W = np.sum(grad_W_i, axis=0)
-        # self.grad_b = np.sum(grad_b_i, axis=0)
+        # self.grad_W = xp.sum(grad_W_i, axis=0)
+        # self.grad_b = xp.sum(grad_b_i, axis=0)
 
         # x shape: (num_samples, num_inputs)
         # z shape: (num_samples, num_outputs)
-        self.grad_W = np.einsum("ij,ik->jk", self.x, grad_out)
-        self.grad_b = np.sum(grad_out, axis=0)
-        # np.einsum("ik,jk->ij", grad_out, self.W)
-        grad_in = np.dot(grad_out, np.transpose(self.W))
+        self.grad_W = xp.einsum("ij,ik->jk", self.x, grad_out)
+        self.grad_b = xp.sum(grad_out, axis=0)
+        # xp.einsum("ik,jk->ij", grad_out, self.W)
+        grad_in = xp.dot(grad_out, xp.transpose(self.W))
         return grad_in.reshape((-1, *self.input_dim))
 
 
@@ -347,8 +348,8 @@ class ConvolutionalLayer(ComputeLayer):
         assert self.num_rows == width_out * height_out
         assert self.num_filter_inputs == np.prod(self.filter_size)
         # initialize weight and bias
-        self.W = np.random.randn(self.num_filter_inputs, self.num_filters) * self.scale
-        self.b = np.random.randn(self.num_filters) * self.scale
+        self.W = xp.random.randn(self.num_filter_inputs, self.num_filters) * self.scale
+        self.b = xp.random.randn(self.num_filters) * self.scale
         return (width_out, height_out, depth_out)
 
     def parameters(self):
@@ -365,14 +366,14 @@ class ConvolutionalLayer(ComputeLayer):
         # https://stackoverflow.com/questions/40076280/how-is-numpy-pad-implemented-for-constant-value
         # (TODO) allocate the padded array first and create a view of the central part of the array to assign values
         pad_width = (0, *self.pad, 0)
-        images_padded = np.pad(images, tuple(zip(pad_width, pad_width)), 'constant')
+        images_padded = xp.pad(images, tuple(zip(pad_width, pad_width)), 'constant')
         # convert images back to row vectors
         x_padded = images_padded.reshape((num_samples, -1))
         # extract input rows for filters
         self.input_rows = x_padded[:, self.row_indices.reshape(-1)].reshape((-1, *self.row_indices.shape))
         # input_rows shape: (num_samples, num_rows, num_filter_inputs)
         # output_rows shape: (num_samples, num_rows, num_filters)
-        output_rows = np.dot(self.input_rows, self.W) + self.b
+        output_rows = xp.dot(self.input_rows, self.W) + self.b
         # convert rows to row vectors
         outputs = output_rows.reshape((-1, *self.output_dim))
         return outputs
@@ -381,13 +382,13 @@ class ConvolutionalLayer(ComputeLayer):
         grad_out = grad_out.reshape(-1, self.num_rows, self.num_filters)
         # input_rows shape: (num_samples, num_rows, num_filter_inputs)
         # grad_z shape: (num_samples, num_rows, num_filters)
-        self.grad_W = np.einsum("ijk,ijl->kl", self.input_rows, grad_out)
-        self.grad_b = np.sum(grad_out, axis=(0, 1))
+        self.grad_W = xp.einsum("ijk,ijl->kl", self.input_rows, grad_out)
+        self.grad_b = xp.sum(grad_out, axis=(0, 1))
         # grad_z shape: (num_samples, num_rows, num_filters)
         # W shape: num_filter_inputs, num_filters
         # grad_rows shape: (num_samples, num_rows, num_filter_inputs)
-        grad_rows = np.dot(grad_out, np.transpose(self.W))
-        # np.einsum("ijl,kl->ijk", grad_z, self.W)
+        grad_rows = xp.dot(grad_out, xp.transpose(self.W))
+        # xp.einsum("ijl,kl->ijk", grad_z, self.W)
         grad_in = common.row2im(grad_rows, self.row_indices, self.input_dim, self.filter_size, self.stride, self.pad)
         assert grad_in.shape[1:] == self.input_dim
         return grad_in
@@ -401,13 +402,13 @@ class PoolingMax(PoolingOperator):
 
     def forward(self, input_rows):
         self.input_rows = input_rows
-        self.max_elem_indices = np.argmax(input_rows, axis=2)
+        self.max_elem_indices = xp.argmax(input_rows, axis=2)
         num_samples, num_rows = input_rows.shape[:2]
-        self.example_indices, self.row_indices = np.ix_(range(num_samples), range(num_rows))
+        self.example_indices, self.row_indices = xp.ix_(range(num_samples), range(num_rows))
         return input_rows[self.example_indices, self.row_indices, self.max_elem_indices]
 
     def backward(self, grad_out):
-        grad_rows = np.zeros_like(self.input_rows)
+        grad_rows = xp.zeros_like(self.input_rows)
         grad_rows[self.example_indices, self.row_indices, self.max_elem_indices] = grad_out
         return grad_rows
 
@@ -416,12 +417,12 @@ class PoolingAvg(PoolingOperator):
 
     def forward(self, input_rows):
         self.input_rows = input_rows
-        return np.average(input_rows, axis=2)
+        return xp.average(input_rows, axis=2)
 
     def backward(self, grad_out):
-        grad_rows = np.zeros_like(self.input_rows)
+        grad_rows = xp.zeros_like(self.input_rows)
         _, _, num_pooling_inputs = self.input_rows.shape
-        grad_rows = grad_out[..., np.newaxis] / num_pooling_inputs
+        grad_rows = grad_out[..., xp.newaxis] / num_pooling_inputs
         return grad_rows
 
 
@@ -466,7 +467,7 @@ class PoolingLayer(ComputeLayer):
         # convert row vectors as images
         images = x.reshape((-1, *self.input_dim))
         pad_width = (0, *self.pad, 0)
-        images_padded = np.pad(images, tuple(zip(pad_width, pad_width)), 'constant')
+        images_padded = xp.pad(images, tuple(zip(pad_width, pad_width)), 'constant')
         # convert images back to row vectors
         x_padded = images_padded.reshape((num_samples, -1))
         # extract input rows for filters

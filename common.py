@@ -1,15 +1,17 @@
-import random
 import numpy as np
 
+
 def split_data(x, y, batch_size, shuffle=False):
-    z = list(zip(x, y))
     if shuffle:
-        random.shuffle(z)
+        assert len(x) == len(y)
+        indices = np.random.permutation(len(x))
+        x = x[indices]
+        y = y[indices]
     batches = []
-    for i in range(0, len(z), batch_size):
-        chunk = z[i:i+batch_size]
-        x, y = zip(*chunk)
-        batches.append((np.array(x), np.array(y)))
+    for i in range(0, len(x), batch_size):
+        xs = x[i:i+batch_size]
+        ys = y[i:i+batch_size]
+        batches.append((xs, ys))
     return batches
 
 def transform_to_one_hot(labels, num_outputs):
@@ -71,11 +73,3 @@ def row2im(rows, row_indices, image_size, filter_size, stride, pad):
     width_padded, height_padded, _ = image_size_padded
     width_indices, height_indices = np.ix_(range(pad[0], width_padded - pad[0]), range(pad[1], height_padded - pad[1]))
     return image_padded[:, width_indices, height_indices, ...]
-
-
-def main():
-    pass
-
-
-if __name__ == "__main__":
-    main()
