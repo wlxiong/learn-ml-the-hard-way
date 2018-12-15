@@ -15,8 +15,9 @@ class NeuralNetwork(object):
 
     def initialize(self):
         input_dim = self.data_layer.output_dim
+        batch_size = self.data_layer.batch_size
         for i, layer in enumerate(self.compute_layers):
-            output_dim = layer.initialize(input_dim)
+            output_dim = layer.initialize(input_dim, batch_size)
             input_dim = output_dim
 
     def evaluate(self, inputs):
@@ -62,7 +63,7 @@ class NeuralNetwork(object):
         if verbose: print("Backward pass")
         grad_out = self.loss_layer.backward()
         grad_in = grad_out
-        for i, layer in enumerate(reversed(self.compute_layers)):
+        for i, layer in reversed(list(enumerate(self.compute_layers))):
             if verbose: print("Layer %d - %s" % (i, layer))
             try:
                 if layer.neuron is not None:
@@ -119,13 +120,13 @@ class ComputeLayer(object):
     def neuron(self):
         return self._neuron
 
-    def initialize(self, input_dim):
-        output_dim = self.init_parameters(input_dim)
+    def initialize(self, input_dim, batch_size):
+        output_dim = self.init_parameters(input_dim, batch_size)
         self._input_dim = input_dim
         self._output_dim = output_dim
         return output_dim
 
-    def init_parameters(self, input_dim):
+    def init_parameters(self, input_dim, batch_size):
         raise NotImplementedError
 
     def forward(self, x):
@@ -143,9 +144,10 @@ class ComputeLayer(object):
 
 class DataLayer(object):
 
-    def __init__(self, inputs, targets):
+    def __init__(self, inputs, targets, batch_size):
         self._inputs = inputs
         self._targets = targets
+        self._batch_size = batch_size
         # the outputs of data layer are the "inputs" of the model
         self._output_dim = inputs[0].shape
 
@@ -156,6 +158,10 @@ class DataLayer(object):
     @property
     def targets(self):
         return self._targets
+
+    @property
+    def batch_size(self):
+        return self._batch_size
 
     @property
     def output_dim(self):
@@ -176,8 +182,7 @@ class BatchDataLayer(DataLayer):
             indices = np.random.permutation(len(inputs))
             inputs = inputs[indices]
             targets = targets[indices]
-        self.batch_size = batch_size
-        super(BatchDataLayer, self).__init__(inputs, targets)
+        super(BatchDataLayer, self).__init__(inputs, targets, batch_size)
 
     def forward(self):
         for i in range(0, len(self.inputs), self.batch_size):
@@ -221,7 +226,7 @@ class IdentityLayer(ComputeLayer):
     def __init__(self, neuron_type=neurons.Identity):
         super(IdentityLayer, self).__init__(neuron_type)
 
-    def init_parameters(self, input_dim):
+    def init_parameters(self, input_dim, batch_size):
         return input_dim
 
     def forward(self, x):
@@ -253,7 +258,7 @@ class DropoutLayer(ComputeLayer):
     def skip_eval(self):
         return True
 
-    def init_parameters(self, input_dim):
+    def init_parameters(self, input_dim, batch_size):
         return input_dim
 
     def forward(self, x):
@@ -282,7 +287,7 @@ class FullyConnectedLayer(ComputeLayer):
         self.W = None
         self.b = None
 
-    def init_parameters(self, input_dim):
+    def init_parameters(self, input_dim, batch_size):
         num_inputs = np.prod(input_dim)
         self.W = xp.random.randn(num_inputs, self.num_neurons) * self.scale
         self.b = xp.random.randn(self.num_neurons) * self.scale
@@ -328,8 +333,10 @@ class ConvolutionalLayer(ComputeLayer):
         self.pad = pad
         self.num_filters = num_filters
         self.scale = scale
+        self.batch_size = None
 
-    def init_parameters(self, input_dim):
+    def init_parameters(self, input_dim, batch_size):
+        self.batch_size = batch_size
         # check input and filter dims
         width_in, height_in, depth_in = input_dim
         width_filter, height_filter = self.filter_size
@@ -343,8 +350,8 @@ class ConvolutionalLayer(ComputeLayer):
         height_out = (height_padded - height_filter) // self.stride[1] + 1
         depth_out = self.num_filters
         # create image to row indices
-        self.row_indices = common.im2row_index(input_dim, self.filter_size, self.stride, self.pad)
-        self.num_rows, self.num_filter_inputs = self.row_indices.shape
+        self.row_indices = xp.asarray(common.im2row_index(input_dim, self.filter_size, self.stride, self.pad, self.batch_size))
+        _, self.num_rows, self.num_filter_inputs = self.row_indices.shape
         assert self.num_rows == width_out * height_out
         assert self.num_filter_inputs == np.prod(self.filter_size)
         # initialize weight and bias
@@ -368,9 +375,9 @@ class ConvolutionalLayer(ComputeLayer):
         pad_width = (0, *self.pad, 0)
         images_padded = xp.pad(images, tuple(zip(pad_width, pad_width)), 'constant')
         # convert images back to row vectors
-        x_padded = images_padded.reshape((num_samples, -1))
+        x_padded = images_padded.reshape(-1)
         # extract input rows for filters
-        self.input_rows = x_padded[:, self.row_indices.reshape(-1)].reshape((-1, *self.row_indices.shape))
+        self.input_rows = x_padded[self.row_indices.reshape(-1)].reshape(self.row_indices.shape)
         # input_rows shape: (num_samples, num_rows, num_filter_inputs)
         # output_rows shape: (num_samples, num_rows, num_filters)
         output_rows = xp.dot(self.input_rows, self.W) + self.b
@@ -389,7 +396,7 @@ class ConvolutionalLayer(ComputeLayer):
         # grad_rows shape: (num_samples, num_rows, num_filter_inputs)
         grad_rows = xp.dot(grad_out, xp.transpose(self.W))
         # xp.einsum("ijl,kl->ijk", grad_z, self.W)
-        grad_in = common.row2im(grad_rows, self.row_indices, self.input_dim, self.filter_size, self.stride, self.pad)
+        grad_in = common.row2im(grad_rows, self.row_indices, self.input_dim, self.filter_size, self.stride, self.pad, xp)
         assert grad_in.shape[1:] == self.input_dim
         return grad_in
 
@@ -434,8 +441,10 @@ class PoolingLayer(ComputeLayer):
         self.stride = stride
         self.pad = pad
         self.pooling_op = pooling_op()
+        self.batch_size = None
 
-    def init_parameters(self, input_dim):
+    def init_parameters(self, input_dim, batch_size):
+        self.batch_size = batch_size
         # check input and filter dims
         width_in, height_in, depth_in = input_dim
         width_filter, height_filter = self.filter_size
@@ -450,8 +459,8 @@ class PoolingLayer(ComputeLayer):
         height_out = (height_padded - height_filter) // self.stride[1] + 1
         depth_out = depth_in
         # create image to row indices
-        self.row_indices = common.im2row_index(input_dim, self.filter_size, self.stride, self.pad)
-        self.num_rows, self.num_pooling_inputs = self.row_indices.shape
+        self.row_indices = xp.asarray(common.im2row_index(input_dim, self.filter_size, self.stride, self.pad, self.batch_size))
+        _, self.num_rows, self.num_pooling_inputs = self.row_indices.shape
         assert self.num_rows == width_out * height_out * depth_in
         assert self.num_pooling_inputs == np.prod(self.filter_size)
         return (width_out, height_out, depth_out)
@@ -469,9 +478,9 @@ class PoolingLayer(ComputeLayer):
         pad_width = (0, *self.pad, 0)
         images_padded = xp.pad(images, tuple(zip(pad_width, pad_width)), 'constant')
         # convert images back to row vectors
-        x_padded = images_padded.reshape((num_samples, -1))
+        x_padded = images_padded.reshape(-1)
         # extract input rows for filters
-        self.input_rows = x_padded[:, self.row_indices.reshape(-1)].reshape((-1, *self.row_indices.shape))
+        self.input_rows = x_padded[self.row_indices.reshape(-1)].reshape(self.row_indices.shape)
         # input_rows shape: (num_samples, num_rows, num_pooling_inputs)
         # output_rows shape: (num_samples, num_rows)
         output_rows = self.pooling_op.forward(self.input_rows)
@@ -482,6 +491,6 @@ class PoolingLayer(ComputeLayer):
         grad_out = grad_out.reshape((-1, self.num_rows))
         # grad_out shape: (num_samples, num_rows)
         grad_rows = self.pooling_op.backward(grad_out)
-        grad_in = common.row2im(grad_rows, self.row_indices, self.input_dim, self.filter_size, self.stride, self.pad)
+        grad_in = common.row2im(grad_rows, self.row_indices, self.input_dim, self.filter_size, self.stride, self.pad, xp)
         assert grad_in.shape[1:] == self.input_dim
         return grad_in

@@ -47,7 +47,7 @@ def get_1st_index(image_size, filter_size):
         # dim 2: ind = ...
     return ind, stride
 
-def im2row_index(image_size, filter_size, stride, pad):
+def im2row_index(image_size, filter_size, stride, pad, batch_size):
     # get padded image size
     image_size_padded = get_padded_image_size(image_size, filter_size, stride, pad)
     # get linear indices for the first block
@@ -61,15 +61,19 @@ def im2row_index(image_size, filter_size, stride, pad):
     limit = slides * dim_stride + 1
     for dim in range(len(image_size_padded)):
         ind = np.arange(0, limit[dim], stride[dim], dtype=np.int).reshape((-1, 1)) + ind.reshape(-1)
-    return ind.reshape(-1, np.prod(filter_size))
+    # extend the indices to an entire batch of images
+    batch_stride = np.prod(image_size_padded)
+    ind = np.arange(0, batch_size * batch_stride, batch_stride, dtype=np.int).reshape((-1, 1)) + ind.reshape(-1)
+    return ind.reshape((batch_size, -1, np.prod(filter_size)))
 
-def row2im(rows, row_indices, image_size, filter_size, stride, pad):
+def row2im(rows, row_indices, image_size, filter_size, stride, pad, xp=np):
     # convert rows to image
-    flatten_rows = rows.reshape((-1, np.prod(row_indices.shape)))
-    image_padded = np.apply_along_axis(lambda g: np.bincount(row_indices.reshape(-1), g), 1, flatten_rows)
+    flatten_image_padded = xp.bincount(row_indices.reshape(-1), rows.reshape(-1))
     image_size_padded = get_padded_image_size(image_size, filter_size, stride, pad)
-    image_padded = image_padded.reshape((-1, *image_size_padded))
+    image_padded = flatten_image_padded.reshape((-1, *image_size_padded))
     # cut padding areas
     width_padded, height_padded, _ = image_size_padded
-    width_indices, height_indices = np.ix_(range(pad[0], width_padded - pad[0]), range(pad[1], height_padded - pad[1]))
+    width_range = range(pad[0], width_padded - pad[0])
+    height_range = range(pad[1], height_padded - pad[1])
+    width_indices, height_indices = xp.ix_(width_range, height_range)
     return image_padded[:, width_indices, height_indices, ...]
