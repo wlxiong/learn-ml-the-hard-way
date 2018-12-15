@@ -185,10 +185,12 @@ class BatchDataLayer(DataLayer):
         super(BatchDataLayer, self).__init__(inputs, targets, batch_size)
 
     def forward(self):
-        for i in range(0, len(self.inputs), self.batch_size):
-            input_batch = self.inputs[i:i+self.batch_size]
-            target_batch = self.targets[i:i+self.batch_size]
-            yield xp.asarray(input_batch), xp.asarray(target_batch)
+        for batch_start in range(0, len(self.inputs), self.batch_size):
+            batch_end = min(len(self.inputs), batch_start + self.batch_size)
+            if batch_end < len(self.inputs):
+                input_batch = self.inputs[batch_start:batch_end]
+                target_batch = self.targets[batch_start:batch_end]
+                yield xp.asarray(input_batch), xp.asarray(target_batch)
 
     def backward(self, grad_out):
         pass
